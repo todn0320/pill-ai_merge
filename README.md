@@ -101,7 +101,7 @@ tail -f /data/convert_log.txt
 | Training 라벨링 | 2,451,927개 |
 | Validation 이미지 | 162,056장 |
 | Validation 라벨링 | 165,576개 |
-| 약 종류 | 3,975종 |
+| 약 종류 | 5,000종 |
 | 서버 | Azure pillv2 (Korea Central) |
 | 디스크 | 3.65TB (/data) |
 
