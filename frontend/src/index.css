@@ -1,2 +1,6 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Noto Sans KR', sans-serif; }
+@import "tailwindcss"; /* 최신 버전은 이 한 줄이면 충분합니다 */
+
+/* 또는 기존 방식 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
