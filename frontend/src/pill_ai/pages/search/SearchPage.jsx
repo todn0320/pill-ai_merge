@@ -191,6 +191,7 @@ export default function SearchPage() {
   const navigate = useNavigate();
   const { cursor, ring } = useCursor();
 
+  /* ── state 선언 (순서 중요!) ── */
   const [searchName,    setSearchName   ] = useState("");
   const [results,       setResults      ] = useState([]);
   const [selected,      setSelected     ] = useState(null);
@@ -206,6 +207,16 @@ export default function SearchPage() {
   const [toastVisible,  setToastVisible ] = useState(false);
   const toastTimer = useRef(null);
 
+  /* ── 필터 적용 (state 선언 후에 위치) ── */
+  const filteredResults = results.filter(item => {
+    if (filter === "전체") return true;
+    if (filter === "일반의약품") return item.ETC_OTC_CODE?.includes("일반");
+    if (filter === "전문의약품") return item.ETC_OTC_CODE?.includes("전문");
+    if (filter === "건강기능식품") return item.ETC_OTC_CODE?.includes("건강");
+    if (filter === "성분 검색") return true;
+    return true;
+  });
+
   /* 토스트 표시 */
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -214,7 +225,7 @@ export default function SearchPage() {
     toastTimer.current = setTimeout(() => setToastVisible(false), 2500);
   };
 
-  /* 약 검색 */
+  /* ── 약 검색 ── */
   const handleSearch = async (nameOverride = null) => {
     const query = nameOverride || searchName;
     if (!query.trim()) return;
@@ -224,8 +235,9 @@ export default function SearchPage() {
     setSuggestions([]);
     setNoResult(false);
     setResults([]);
+    setFilter("전체"); // 검색 시 필터 초기화
     try {
-      const res  = await fetch(`${API_BASE}/drug/search?name=${encodeURIComponent(query)}&limit=20`);
+      const res  = await fetch(`${API_BASE}/drug/search?name=${encodeURIComponent(query)}&limit=50`);
       const data = await res.json();
       if (data.results?.length > 0) {
         setResults(data.results);
@@ -242,7 +254,7 @@ export default function SearchPage() {
     }
   };
 
-  /* 퍼지 추천 클릭 */
+  /* ── 퍼지 추천 클릭 ── */
   const handleSuggestionClick = (name) => {
     setSearchName(name);
     setSuggestions([]);
@@ -250,7 +262,7 @@ export default function SearchPage() {
     handleSearch(name);
   };
 
-  /* 약 상세 조회 */
+  /* ── 약 상세 조회 ── */
   const handleSelect = async (item) => {
     try {
       const res  = await fetch(`${API_BASE}/drug/info/${item.ITEM_SEQ}`);
@@ -263,7 +275,7 @@ export default function SearchPage() {
     }
   };
 
-  /* AI 질문 */
+  /* ── AI 질문 ── */
   const handleAiAsk = async () => {
     if (!aiQuestion.trim() || !selected) return;
     setAiLoading(true);
@@ -280,7 +292,7 @@ export default function SearchPage() {
     }
   };
 
-  /* 내 약함에 추가 */
+  /* ── 내 약함에 추가 ── */
   const handleAddToCabinet = () => {
     if (!selected) return;
     const existing  = JSON.parse(localStorage.getItem("cabinet") || "[]");
@@ -336,6 +348,7 @@ export default function SearchPage() {
                 <button className="sp-bar-btn" onClick={() => handleSearch()}>검색</button>
               </div>
 
+              {/* 필터 */}
               <div className="sp-filters">
                 {FILTERS.map(f => (
                   <button
@@ -348,7 +361,7 @@ export default function SearchPage() {
 
               <div className="sp-hint">
                 <span>💡</span>
-                <span>자음 검색 지원: ㅌ → 타이레놀 / ㅇ → 아스피린, 오메가3...</span>
+                <span>검색 후 필터로 의약품 종류를 구분할 수 있어요</span>
               </div>
             </div>
           </div>
@@ -361,10 +374,12 @@ export default function SearchPage() {
               <div className="sp-list-count">
                 {loading
                   ? "검색 중..."
-                  : results.length > 0
-                  ? `검색 결과 ${results.length}건`
+                  : filteredResults.length > 0
+                  ? `검색 결과 ${filteredResults.length}건`
                   : noResult
                   ? "검색 결과가 없습니다"
+                  : results.length > 0
+                  ? `필터 결과 없음`
                   : "검색어를 입력하세요"}
               </div>
 
@@ -394,8 +409,8 @@ export default function SearchPage() {
                 </div>
               )}
 
-              {/* 검색 결과 */}
-              {results.map(item => (
+              {/* 검색 결과 — filteredResults 사용 */}
+              {filteredResults.map(item => (
                 <div
                   key={item.ITEM_SEQ}
                   className={`sp-result-row${selected?.ITEM_SEQ === item.ITEM_SEQ ? " selected" : ""}`}
@@ -527,38 +542,30 @@ const CSS = `
 }
 html,body { width:100%; height:100%; cursor:none; font-family:var(--fn); background:var(--bg); overflow:hidden; }
 
-/* 커서 */
 .sp-cursor { width:10px; height:10px; border-radius:50%; background:var(--a1); position:fixed; z-index:9999; pointer-events:none; transform:translate(-50%,-50%); mix-blend-mode:multiply; }
 .sp-cursor-ring { width:32px; height:32px; border-radius:50%; border:1px solid var(--a1); position:fixed; z-index:9998; pointer-events:none; transform:translate(-50%,-50%); opacity:.4; }
 
-/* 루트 */
 .sp-root { display:flex; width:100%; height:100vh; overflow:hidden; }
 .sp-body { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
 
-/* 검색 헤더 */
 .sp-search-header { padding:20px 22px 0; flex-shrink:0; }
 .sp-search-card { background:#fff; border:1px solid var(--bd); border-radius:16px; padding:18px 20px; box-shadow:0 1px 4px rgba(120,80,200,.07); }
 .sp-search-title { display:flex; align-items:center; gap:10px; font-size:17px; font-weight:700; color:var(--txt); margin-bottom:12px; }
 
-/* 검색 바 */
 .sp-bar-wrap { position:relative; margin-bottom:10px; }
 .sp-bar-icon { position:absolute; left:13px; top:50%; transform:translateY(-50%); font-size:15px; }
 .sp-bar-input { width:100%; height:42px; border-radius:11px; border:none; background:#f9f8ff; padding:0 76px 0 40px; font-size:13px; color:var(--txt); outline:none; box-sizing:border-box; font-family:var(--fn); transition:box-shadow .2s; }
 .sp-bar-btn { position:absolute; right:4px; top:4px; height:34px; width:58px; border-radius:9px; background:var(--p); border:none; color:#fff; font-weight:600; font-size:13px; cursor:none; font-family:var(--fn); transition:transform .15s; }
 .sp-bar-btn:hover { transform:scale(1.03); }
 
-/* 필터 */
 .sp-filters { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
 .sp-chip { padding:5px 13px; border-radius:50px; border:1px solid var(--bd); background:transparent; color:var(--gray); font-size:12px; font-weight:500; cursor:none; font-family:var(--fn); transition:all .15s; }
 .sp-chip.active { background:#eef2ff; color:var(--p); font-weight:600; border-color:transparent; }
 
-/* 힌트 */
 .sp-hint { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--gray); }
 
-/* 콘텐츠 영역 */
 .sp-content { display:flex; flex:1; overflow:hidden; padding:14px 22px 22px; gap:14px; }
 
-/* 결과 리스트 */
 .sp-list { width:320px; flex-shrink:0; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
 .sp-list-count { font-size:12px; font-weight:600; color:var(--gray); margin-bottom:4px; flex-shrink:0; }
 
@@ -576,12 +583,10 @@ html,body { width:100%; height:100%; cursor:none; font-family:var(--fn); backgro
 .sp-result-name { font-size:13px; font-weight:600; color:var(--txt); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sp-result-company { font-size:11px; color:var(--gray); margin-top:2px; }
 
-/* 태그 */
 .sp-tag { font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px; flex-shrink:0; }
 .sp-tag.otc { background:#f0fdf4; color:#16a34a; }
 .sp-tag.rx  { background:#fef2f2; color:#ef4444; }
 
-/* 상세 패널 */
 .sp-detail { flex:1; background:#fff; border:1px solid var(--bd); border-radius:16px; overflow-y:auto; padding:22px; }
 .sp-detail-empty { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--gray); text-align:center; line-height:1.7; font-size:13px; }
 
@@ -590,19 +595,16 @@ html,body { width:100%; height:100%; cursor:none; font-family:var(--fn); backgro
 .sp-drug-name { font-size:15px; font-weight:700; color:var(--txt); margin-bottom:4px; }
 .sp-drug-company { font-size:12px; color:var(--gray); margin-bottom:8px; }
 
-/* 섹션 */
 .sp-section { margin-bottom:16px; }
 .sp-section-ttl { display:flex; align-items:center; gap:8px; font-size:12px; font-weight:700; color:var(--txt); margin-bottom:8px; }
 .sp-dot { width:8px; height:8px; border-radius:50%; background:var(--p); flex-shrink:0; }
 .sp-section-txt { font-size:13px; color:#4b5563; line-height:1.75; margin-left:16px; }
-.sp-warn-box { display:flex; gap:8px; align-items:flex-start; background:#fef2f2; border:1px solid #fee2e2; border-radius:10px; padding:12px 14px; font-size:12px; color:#ef4444; line-height:1.65; margin-left:0; }
+.sp-warn-box { display:flex; gap:8px; align-items:flex-start; background:#fef2f2; border:1px solid #fee2e2; border-radius:10px; padding:12px 14px; font-size:12px; color:#ef4444; line-height:1.65; }
 
-/* 근거 */
 .sp-evidence { display:flex; gap:10px; align-items:flex-start; background:rgba(238,242,255,.5); border:1px solid #e0e7ff; border-radius:12px; padding:12px 14px; margin-bottom:16px; }
 .sp-ev-title { font-size:11px; font-weight:700; color:#312e81; margin-bottom:3px; }
 .sp-ev-sub { font-size:10px; color:#6366f1; }
 
-/* AI */
 .sp-ai-row { display:flex; gap:6px; margin-bottom:8px; }
 .sp-ai-input { flex:1; height:40px; border-radius:10px; border:1px solid var(--bd); background:#f9f8ff; padding:0 12px; font-size:12px; color:var(--txt); outline:none; font-family:var(--fn); transition:border-color .2s; }
 .sp-ai-input:focus { border-color:var(--a1); box-shadow:0 0 0 2px rgba(167,139,250,.15); }
@@ -612,14 +614,12 @@ html,body { width:100%; height:100%; cursor:none; font-family:var(--fn); backgro
 .sp-ai-answer { background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:12px 14px; font-size:12px; color:#4b5563; line-height:1.7; }
 .sp-ai-label { font-size:11px; font-weight:700; color:var(--p); margin-bottom:6px; }
 
-/* 액션 버튼 */
 .sp-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
 .sp-btn-add { padding:12px; border-radius:12px; background:var(--p); border:none; color:#fff; font-weight:700; font-size:13px; cursor:none; font-family:var(--fn); box-shadow:0 4px 12px rgba(124,58,237,.3); transition:transform .15s, box-shadow .15s; }
 .sp-btn-add:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(124,58,237,.4); }
 .sp-btn-check { padding:12px; border-radius:12px; background:#f9f8ff; border:1px solid var(--bd); color:var(--sub); font-weight:700; font-size:13px; cursor:none; font-family:var(--fn); transition:background .15s; }
 .sp-btn-check:hover { background:var(--pl); color:var(--p); }
 
-/* 스크롤바 */
 ::-webkit-scrollbar { width:4px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:rgba(167,139,250,.3); border-radius:2px; }
