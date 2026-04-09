@@ -103,7 +103,7 @@ tail -f /data/convert_log.txt
 | Validation 라벨링 | 165,576개 |
 | 약 종류 | 3,975종 |
 | 서버 | Azure pillv2 (Korea Central) |
-| 디스크 | 32TB (/data) |
+| 디스크 | 3.65TB (/data) |
 
 ### YOLO 학습 시작
 
